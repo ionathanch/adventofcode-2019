@@ -11,25 +11,7 @@
 (define input
   (string->program (car (problem-input 5))))
 
-(struct instruction
-  (opcode mode1 mode2 mode3)
-  #:transparent)
-
-;; fetch : number -> number -> program -> program
-;; If the mode is 0, the value at pointer is an address.
-;; If the mode is 1, the value at pointer is immediate.
-;; Return the value at that address or the immediate.
-(define (fetch mode pointer program)
-  (if (zero? mode)
-      (list-ref program (list-ref program pointer))
-      (list-ref program pointer)))
-
-;; write : number -> number -> program -> program
-;; Write the value into the location at pointer.
-(define (write value pointer program)
-  (list-set program (list-ref program pointer) value))
-
-;; decode-instr : number -> instruction
+;; exec : number -> program -> program
 ;; An encoded instruction is anywhere from 1 to 4 digits long.
 ;; The last one or two digits represent the opcode, which can be:
 ;;   - 1/2: add/multiply parameters 1 and 2 and store in parameter 3
@@ -42,55 +24,50 @@
 ;; The next few digits to the left of the opcode (if any) represent
 ;; the mode of each parameter, with that of parameter i in the digit
 ;; i digits to the left of the opcode.
+;; If the mode is 0, the value at pointer is an address.
+;; If the mode is 1, the value at pointer is immediate.
 ;; Note that leading zeroes in the encoded instruction are omitted.
-(define (decode-instr n)
-  (let* ([cs (number->digits-reverse n)]
-         [ops '(1 2 3 4 5 6 7 8 99)]
-         [op? (λ (v) (member v ops))])
-    (match cs
-      [(list-rest (? op? op) rest)
-       (instruction op
-                    (list-ref* rest 1 0)
-                    (list-ref* rest 2 0)
-                    (list-ref* rest 3 0))]
-      [(list-rest 9 9 _)
-       (instruction 99 0 0 0)])))
-
-;; exec : number -> program -> program
 (define (exec pointer program)
-  (let* ([instr (decode-instr (list-ref program pointer))]
-         [v1 (λ () (fetch (instruction-mode1 instr) (+ pointer 1) program))]
-         [v2 (λ () (fetch (instruction-mode2 instr) (+ pointer 2) program))]
+  (let* ([instruction (list-ref program pointer)]
+         [opcode (remainder instruction 100)]
+         [mode1 (remainder (quotient instruction 100) 10)]
+         [mode2 (remainder (quotient instruction 1000) 10)]
+         [mode3 (remainder (quotient instruction 10000) 10)]
+         ;; l* : call to get write location from program
+         [l1 (λ () (if (zero? mode1) (list-ref program (+ pointer 1)) (+ pointer 1)))]
+         [l2 (λ () (if (zero? mode2) (list-ref program (+ pointer 2)) (+ pointer 2)))]
+         [l3 (λ () (if (zero? mode3) (list-ref program (+ pointer 3)) (+ pointer 3)))]
+         ;; v* : call to read values from program
+         [v1 (λ () (list-ref program (l1)))]
+         [v2 (λ () (list-ref program (l2)))]
+         [v3 (λ () (list-ref program (l3)))]
          [next-pointer
-          (λ (op) (match op
-                    [(or 1 2 7 8) (+ pointer 4)]
-                    [(or 3 4) (+ pointer 2)]
-                    [(or 5 6) (+ pointer 3)]))]
-         [arith
-          (λ (op) (match op [1 +] [2 *]))]
-         [jump-if
-          (λ (op) (match op [5 nzero?] [6 zero?]))]
-         [lt-eq
-          (λ (op) (match op [7 <] [8 =]))])
-    (match (instruction-opcode instr)
-      [(and op (or 1 2))
-       (let* ([program (write ((arith op) (v1) (v2)) (+ pointer 3) program)])
-         (exec (next-pointer op) program))]
+          (match opcode
+            [(or 1 2 7 8) (+ pointer 4)]
+            [(or 3 4) (+ pointer 2)]
+            [(or 5 6) (+ pointer 3)]
+            [99 (+ pointer 1)])])
+    (match opcode
+      [(or 1 2)
+       (let* ([arith (match opcode [1 +] [2 *])]
+              [value (arith (v1) (v2))]
+              [program (list-set program (l3) value)])
+         (exec next-pointer program))]
       [3
-       (let* ([input (read)]
-              [program (write input (+ pointer 1) program)])
-         (exec (next-pointer 3) program))]
+       (let* ([program (list-set program (l1) (read))])
+         (exec next-pointer program))]
       [4
        (displayln (v1))
-       (exec (next-pointer 4) program)]
-      [(and op (or 5 6))
-       (let* ([pointer (if ((jump-if op) (v1)) (v2)
-                           (next-pointer op))])
-         (exec pointer program))]
-      [(and op (or 7 8))
-       (let* ([v3 (if ((lt-eq op) (v1) (v2)) 1 0)]
-              [program (write v3 (+ pointer 3) program)])
-         (exec (next-pointer op) program))]
+       (exec next-pointer program)]
+      [(or 5 6)
+       (let* ([jump-if (match opcode [5 nzero?] [6 zero?])]
+              [next-pointer (if (jump-if (v1)) (v2) next-pointer)])
+         (exec next-pointer program))]
+      [(or 7 8)
+       (let* ([lt-eq (match opcode [7 <] [8 =])]
+              [value (if (lt-eq (v1) (v2)) 1 0)]
+              [program (list-set program (l3) value)])
+         (exec next-pointer program))]
       [99 program])))
 
 (define (execute)

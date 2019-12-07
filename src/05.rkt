@@ -2,6 +2,9 @@
 
 (require "../lib.rkt")
 
+(provide string->program
+         exec)
+
 ;; string->program : string -> (listof number)
 ;; A program is a list of numbers,
 ;; which are sequences of instructions and parameters.
@@ -11,7 +14,13 @@
 (define input
   (string->program (car (problem-input 5))))
 
-;; exec : number -> program -> program
+;; leave-one : (listof any) -> (listof any)
+;; If the list has one or fewer elements, return the list;
+;; otherwise, return the rest of the list
+(define (leave-one lst)
+  (if (<= (length lst) 1) lst (cdr lst)))
+
+;; exec : program -> number -> (listof number) -> (listof number) -> program
 ;; An encoded instruction is anywhere from 1 to 4 digits long.
 ;; The last one or two digits represent the opcode, which can be:
 ;;   - 1/2: add/multiply parameters 1 and 2 and store in parameter 3
@@ -27,7 +36,7 @@
 ;; If the mode is 0, the value at pointer is an address.
 ;; If the mode is 1, the value at pointer is immediate.
 ;; Note that leading zeroes in the encoded instruction are omitted.
-(define (exec pointer program)
+(define (exec program #:ptr [pointer 0] #:in [input '()] #:out [output '()])
   (let* ([instruction (list-ref program pointer)]
          [opcode (remainder instruction 100)]
          [mode1 (remainder (quotient instruction 100) 10)]
@@ -52,24 +61,32 @@
        (let* ([arith (match opcode [1 +] [2 *])]
               [value (arith (v1) (v2))]
               [program (list-set program (l3) value)])
-         (exec next-pointer program))]
+         (exec program #:ptr next-pointer #:in input #:out output))]
       [3
-       (let* ([program (list-set program (l1) (read))])
-         (exec next-pointer program))]
+       (let* ([value (car input)]
+              [input (cdr input)]
+              [program (list-set program (l1) value)])
+         (exec program #:ptr next-pointer #:in input #:out output))]
       [4
-       (displayln (v1))
-       (exec next-pointer program)]
+       (let* ([output (append output `(,(v1)))])
+         (exec program #:ptr next-pointer #:in input #:out output))]
       [(or 5 6)
        (let* ([jump-if (match opcode [5 nzero?] [6 zero?])]
               [next-pointer (if (jump-if (v1)) (v2) next-pointer)])
-         (exec next-pointer program))]
+         (exec program #:ptr next-pointer #:in input #:out output))]
       [(or 7 8)
        (let* ([lt-eq (match opcode [7 <] [8 =])]
               [value (if (lt-eq (v1) (v2)) 1 0)]
               [program (list-set program (l3) value)])
-         (exec next-pointer program))]
-      [99 program])))
+         (exec program #:ptr next-pointer #:in input #:out output))]
+      [99 (values program output)])))
 
-(define (execute)
-  (exec 0 input)
-  (void))
+(define part1
+  (let-values ([(_ out) (exec input #:in '(1))])
+    (last out)))
+
+(define part2
+  (let-values ([(_ out) (exec input #:in '(5))])
+    (last out)))
+
+(show-solution part1 part2)

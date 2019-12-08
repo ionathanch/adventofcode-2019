@@ -1,6 +1,7 @@
 #lang racket
 
-(require "../lib.rkt"
+(require data/queue
+         "../lib.rkt"
          "05.rkt")
 
 (define input
@@ -15,11 +16,12 @@
     (car outE)))
 
 (define part1
-  (let ([phases (permutations '(0 1 2 3 4))])
-    (apply max (append (map amplify phases)))))
+    (let ([phases (permutations '(0 1 2 3 4))])
+      (apply max (append (map amplify phases)))))
 
-;; The IntCode interpreter from Day 5, except it uses threads
-(define (exec-pipe program #:ptr [pointer 0] #:thr thread)
+(struct state (program pointer input) #:transparent)
+
+(define (exec-state program #:ptr [pointer 0] #:in [input '()])
   (let* ([instruction (list-ref program pointer)]
          [opcode (remainder instruction 100)]
          [mode1 (remainder (quotient instruction 100) 10)]
@@ -44,45 +46,44 @@
        (let* ([arith (match opcode [1 +] [2 *])]
               [value (arith (v1) (v2))]
               [program (list-set program (l3) value)])
-         (exec-pipe program #:ptr next-pointer #:thr thread))]
+         (exec-state program #:ptr next-pointer #:in input))]
       [3
-       (let* ([value (thread-receive)]
+       (let* ([value (car input)]
+              [input (cdr input)]
               [program (list-set program (l1) value)])
-         (exec-pipe program #:ptr next-pointer #:thr thread))]
+         (exec-state program #:ptr next-pointer #:in input))]
       [4
-       (thread-send thread (v1))
-       (exec-pipe program #:ptr next-pointer #:thr thread)]
+       (values 'yield (v1)
+               (state program next-pointer input))]
       [(or 5 6)
        (let* ([jump-if (match opcode [5 nzero?] [6 zero?])]
               [next-pointer (if (jump-if (v1)) (v2) next-pointer)])
-         (exec-pipe program #:ptr next-pointer #:thr thread))]
+         (exec-state program #:ptr next-pointer #:in input))]
       [(or 7 8)
        (let* ([lt-eq (match opcode [7 <] [8 =])]
               [value (if (lt-eq (v1) (v2)) 1 0)]
               [program (list-set program (l3) value)])
-         (exec-pipe program #:ptr next-pointer #:thr thread))]
+         (exec-state program #:ptr next-pointer #:in input))]
       [99
-       (thread-send thread (values program (thread-receive)))])))
+       (values 'halt (car input)
+               (state program next-pointer (cdr input)))])))
 
 (define (amplify-loop phase)
-  (let* ([threadE (thread (exec-pipe input #:thr (current-thread)))]
-         [threadD (thread (exec-pipe input #:thr threadE))]
-         [threadC (thread (exec-pipe input #:thr threadD))]
-         [threadB (thread (exec-pipe input #:thr threadC))]
-         [threadA (thread (exec-pipe input #:thr threadB))])
-    (thread-send threadE (fifth  phase))
-    (thread-send threadD (fourth phase))
-    (thread-send threadC (third  phase))
-    (thread-send threadB (second phase))
-    (thread-send threadA (first phase))
-    (thread-send threadA 0)
-    (let loop ()
-      (let ([msg (thread-receive)])
-        (if (number? msg)
-            (begin
-              (thread-send threadA msg)
-              (loop))
-            (let-values ([(_ output) msg])
-              output))))))
+  (let* ([amps (map (compose (curry state input 0) list) phase)]
+         [Q (make-queue)])
+    (map (curry enqueue! Q) amps)
+    (let loop ([signal 0])
+      (let* ([amp (dequeue! Q)])
+        (let-values ([(code signal amp)
+                      (exec-state (state-program amp)
+                            #:ptr (state-pointer amp)
+                            #:in (rac (state-input amp) signal))])
+          (match code
+            ['yield (enqueue! Q amp) (loop signal)]
+            ['halt signal]))))))
 
-(show-solution part1 #f)
+(define part2
+  (let ([phases (permutations '(5 6 7 8 9))])
+    (apply max (map amplify-loop phases))))
+
+(show-solution part1 part2)

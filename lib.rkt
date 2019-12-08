@@ -8,6 +8,7 @@
          sum
          neq?
          nzero?
+         rac
          list-ref*
          number->digits-reverse
          number->digits)
@@ -39,6 +40,11 @@
 ;; nzero? : number -> boolean
 (define (nzero? n)
   (not (zero? n)))
+
+;; rac : (listof any) -> any -> (listof any)
+;; Append element to the back of the list.
+(define (rac lst v)
+  (append lst (list v)))
 
 ;; list-ref* : (listof any) -> number -> any -> any
 ;; Same as list-ref, except a default value is provided

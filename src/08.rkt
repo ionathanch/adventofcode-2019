@@ -13,7 +13,7 @@
 ;; with the final list possibly being smaller
 ;; e.g. '(1 2 3 4 5) 2 => '((1 2) (3 4) (5))
 (define (partition-into lst size)
-  (if (< (length lst) size) (list lst)
+  (if (< (length lst) size) lst
       (cons (take lst size)
             (partition-into (drop lst size) size))))
 

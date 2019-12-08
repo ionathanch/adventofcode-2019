@@ -46,7 +46,7 @@
 
 (define part2
   (let* ([image (map (curry findf (curry neq? #\2)) (pivot layers))]
-         [image* (map (λ (pixel) (if (eq? pixel #\1) #\█ #\░)) image)]
+         [image* (map (λ (pixel) (if (eq? pixel #\1) #\█ #\ )) image)]
          [msg (map list->string (partition-into image* width))])
     (for-each displayln msg)))
 

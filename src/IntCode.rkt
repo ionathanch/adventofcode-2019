@@ -15,21 +15,31 @@
 (define (program? p)
   (vectorof number?))
 
+;; state =
+;;       | out number (() -> state)
+;;       | in (number -> state)
+;;       | halt program
 (define-type state
   (out [value number?] [resume procedure?])
   (in  [resume procedure?])
   (halt [program program?]))
 
+;; resume-with-output : state -> (values number state)
+;; Extract the output, then resume the program.
 (define (resume-with-output st)
   (type-case state st
     [out (value resume) (values value (resume))]
     [else (error "resume-with-output: Unexpected program state.")]))
 
+;; resume-with-input : state -> number -> state
+;; Resume the program with given input.
 (define (resume-with-input st input)
   (type-case state st
     [in (resume) (resume input)]
     [else (error "resume-with-input: Unexpected program state.")]))
 
+;; resume-with-io : state -> (listof number) -> (listof number)
+;; Run the program, providing input as needed, and collecting output.
 (define (resume-with-io st inputs)
   (type-case state st
     [in (resume)
@@ -38,6 +48,8 @@
          (cons value (resume-with-io (resume) inputs))]
     [halt (program) '()]))
 
+;; halt-with-program : state -> program
+;; Return program state of halted execution.
 (define (halt-with-program st)
   (type-case state st
     [halt (program) program]

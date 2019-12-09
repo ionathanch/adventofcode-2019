@@ -4,8 +4,6 @@
 
 (define-values (start end) (values 235741 706948))
 
-(define (neq? b1 b2) (not (eq? b1 b2)))
-
 (define (two-adjacent-digits? cs)
   (if (< (length cs) 2) #f
       (or (eq? (first cs)

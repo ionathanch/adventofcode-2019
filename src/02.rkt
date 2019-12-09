@@ -1,34 +1,29 @@
 #lang racket
 
-(require "../lib.rkt")
+(require "../lib.rkt"
+         "IntCode.rkt"
+         racket/vector)
 
 (define input
-  (map string->number (string-split (car (problem-input 2)) ",")))
+  (string->program (car (problem-input 2))))
 
 (define (input-nv nv)
-  (append (list (car input) (first nv) (second nv)) (cdddr input)))
+  (let ([input (vector-copy input)])
+    (vector-set! input 1 (first nv))
+    (vector-set! input 2 (second nv))
+    input))
 
-(define (exec pointer program)
-  (let* ([opcode (list-ref program pointer)]
-         [val1 (list-ref program (list-ref program (+ pointer 1)))]
-         [val2 (list-ref program (list-ref program (+ pointer 2)))]
-         [val3 (list-ref program (+ pointer 3))]
-         [next-program
-          (cond [(= opcode 1)
-                 (list-set program val3 (+ val1 val2))]
-                [(= opcode 2)
-                 (list-set program val3 (* val1 val2))]
-                [else program])])
-    (if (= opcode 99)
-        next-program
-        (exec (+ pointer 4) next-program))))
+(define (exec-pos0 program)
+  (let-values ([(program _)
+                (exec program)])
+    (vector-ref program 0)))
 
 (define part1
-  (car (exec 0 (input-nv '(12 2)))))
+  (exec-pos0 (input-nv '(12 2))))
 
 (define part2
   (let* ([nounverbs (cartesian-product (range 100) (range 100))]
-         [outputs (map (λ (nv) (car (exec 0 (input-nv nv)))) nounverbs)]
+         [outputs (map (λ (nv) (exec-pos0 (input-nv nv))) nounverbs)]
          [nounverb (list-ref nounverbs (index-of outputs 19690720))]
          [noun (first nounverb)]
          [verb (second nounverb)])
@@ -41,7 +36,8 @@
 ;;;; ALTERNATE SOLUTION
 
 (define part2-input
-  (append (list (car input) 'noun 'verb '(+ noun verb)) (cddddr input)))
+  (let ([input (vector->list input)])
+    (append (list (car input) 'noun 'verb '(+ noun verb)) (cddddr input))))
 
 (define (exec-sym pointer program)
   (let* ([opcode (list-ref program pointer)]

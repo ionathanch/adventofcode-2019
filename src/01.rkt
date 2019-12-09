@@ -2,30 +2,6 @@
 
 (require "../lib.rkt")
 
-#|
-DAY 1: The Tyranny of the Rocket Equation (excerpt)
-
-PART 1:
-...
-Fuel required to launch a given module is based on its mass.
-Specifically, to find the fuel required for a module, take its mass,
-divide by three, round down, and subtract 2.
-...
-What is the sum of the fuel requirements for all of the modules
-on your spacecraft?
-
-PART 2:
-...
-So, for each module mass, calculate its fuel and add it to the total.
-Then, treat the fuel amount you just calculated as the input mass
-and repeat the process, continuing until a fuel requirement is zero
-or negative.
-...
-What is the sum of the fuel requirements for all of the modules
-on your spacecraft when also taking into account the mass of the
-added fuel?
-|#
-
 (define input (map string->number (problem-input 1)))
 
 ;; calc-fuel : number -> number

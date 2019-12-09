@@ -2,7 +2,7 @@
 
 (require data/queue
          "../lib.rkt"
-         "05.rkt")
+         "IntCode.rkt")
 
 (define input
   (string->program (car (problem-input 7))))
@@ -69,7 +69,8 @@
                (state program next-pointer (cdr input)))])))
 
 (define (amplify-loop phase)
-  (let* ([amps (map (compose (curry state input 0) list) phase)]
+  (let* ([input (vector->list input)]
+         [amps (map (compose (curry state input 0) list) phase)]
          [Q (make-queue)])
     (map (curry enqueue! Q) amps)
     (let loop ([signal 0])

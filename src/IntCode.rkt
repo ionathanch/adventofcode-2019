@@ -1,10 +1,7 @@
-#lang racket
+#lang plai
 
 (require racket/vector
          "../lib.rkt")
-
-(provide string->program
-         exec)
 
 (define (vector-ref** vec pos)
   (vector-ref* vec pos 0))
@@ -15,7 +12,38 @@
 (define (string->program str)
   (list->vector (map string->number (string-split str ","))))
 
-;; exec* : program -> number -> number -> (listof number) -> (listof number) -> program
+(define (program? p)
+  (vectorof number?))
+
+(define-type state
+  (out [value number?] [resume procedure?])
+  (in  [resume procedure?])
+  (halt [program program?]))
+
+(define (resume-with-output st)
+  (type-case state st
+    [out (value resume) (values value (resume))]
+    [else (error "resume-with-output: Unexpected program state.")]))
+
+(define (resume-with-input st input)
+  (type-case state st
+    [in (resume) (resume input)]
+    [else (error "resume-with-input: Unexpected program state.")]))
+
+(define (resume-with-io st inputs)
+  (type-case state st
+    [in (resume)
+        (resume-with-io (resume (car inputs)) (cdr inputs))]
+    [out (value resume)
+         (cons value (resume-with-io (resume) inputs))]
+    [halt (program) '()]))
+
+(define (halt-with-program st)
+  (type-case state st
+    [halt (program) program]
+    [else (error "halt-with-program: Unexpected program state.")]))
+
+;; exec* : program -> number -> number -> state
 ;; An encoded instruction is anywhere from 1 to 4 digits long.
 ;; The last one or two digits represent the opcode, which can be:
 ;;   - 1/2: add/multiply parameters 1 and 2 and store in parameter 3
@@ -33,7 +61,7 @@
 ;; If the mode is 1, the value at pointer is immediate.
 ;; If the mode is 2, the value at pointer is an address to be offset by base.
 ;; Note that leading zeroes in the encoded instruction are omitted.
-(define (exec* program #:ptr [pointer 0] #:base [base 0] #:in [input '()] #:out [output '()])
+(define (exec* program #:ptr [pointer 0] #:base [base 0])
   (define instruction (vector-ref** program pointer))
   (define opcode (remainder instruction 100))
   (define next-pointer
@@ -63,29 +91,33 @@
        (let* ([arith (match opcode [1 +] [2 *])]
               [value (arith (v1) (v2))]
               [program (vector-set!* program (l3) value)])
-         (exec* program #:ptr next-pointer #:base base #:in input #:out output))]
+         (exec* program #:ptr next-pointer #:base base))]
       [3
-       (let* ([value (car input)]
-              [input (cdr input)]
-              [program (vector-set!* program (l1) value)])
-         (exec* program #:ptr next-pointer #:base base #:in input #:out output))]
+       (let* ([resume
+               (λ (input)
+                 (vector-set!* program (l1) input)
+                 (exec* program #:ptr next-pointer #:base base))])
+         (in resume))]
       [4
-       (let* ([output (append output `(,(v1)))])
-         (exec* program #:ptr next-pointer #:base base #:in input #:out output))]
+       (let* ([output (v1)]
+              [resume
+               (λ () (exec* program #:ptr next-pointer #:base base))])
+         (out output resume))]
       [(or 5 6)
        (let* ([jump-if (match opcode [5 nzero?] [6 zero?])]
               [next-pointer (if (jump-if (v1)) (v2) next-pointer)])
-         (exec* program #:ptr next-pointer #:base base #:in input #:out output))]
+         (exec* program #:ptr next-pointer #:base base))]
       [(or 7 8)
        (let* ([lt-eq (match opcode [7 <] [8 =])]
               [value (if (lt-eq (v1) (v2)) 1 0)]
               [program (vector-set!* program (l3) value)])
-         (exec* program #:ptr next-pointer #:base base #:in input #:out output))]
+         (exec* program #:ptr next-pointer #:base base))]
       [9
        (let ([base (+ base (v1))])
-         (exec* program #:ptr next-pointer #:base base #:in input #:out output))]
-      [99 (values program output)])))
+         (exec* program #:ptr next-pointer #:base base))]
+      [99
+       (halt program)])))
 
 ;; Just so we always run the program on a fresh copy
-(define (exec program #:ptr [pointer 0] #:base [base 0] #:in [input '()] #:out [output '()])
-  (exec* (vector-copy program) #:ptr pointer #:base base #:in input #:out output))
+(define (exec program #:ptr [pointer 0] #:base [base 0])
+  (exec* (vector-copy program) #:ptr pointer #:base base))

@@ -6,10 +6,10 @@
 (define input
   (string->program (car (problem-input 9))))
 
-(define-values (_ part1)
-  (exec input #:in '(1)))
+(define part1
+  (car (resume-with-io (exec input) '(1))))
 
-(define-values (__ part2)
-  (exec input #:in '(2)))
+(define part2
+  (car (resume-with-io (exec input) '(2))))
 
-(show-solution (car part1) (car part2))
+(show-solution part1 part2)

@@ -1,7 +1,11 @@
 #lang racket
 
-(require racket/format
-         2htdp/batch-io)
+(require
+  (only-in data/queue
+           make-queue
+           enqueue!)
+  (only-in 2htdp/batch-io
+           read-lines))
 
 (provide problem-input
          show-solution
@@ -14,6 +18,7 @@
          list-ref*
          chunks-of
          transpose
+         list->queue
          vector-ref*
          vector-set!*)
 
@@ -96,6 +101,13 @@
       (let ([pixels (map car layers)]
             [layers (map cdr layers)])
         (cons pixels (transpose layers)))))
+
+;; list->queue : (listof any) -> (queueof any)
+;; Creates a queue and adds elements of list in order
+(define (list->queue lst)
+  (let ([Q (make-queue)])
+    (for-each (curry enqueue! Q) lst)
+    Q))
 
 
 ;; Vector helpers ;;

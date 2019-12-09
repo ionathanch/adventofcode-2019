@@ -7,11 +7,9 @@
   (string->program (car (problem-input 5))))
 
 (define part1
-  (let-values ([(_ out) (exec input #:in '(1))])
-    (last out)))
+  (last (resume-with-io (exec input) '(1))))
 
 (define part2
-  (let-values ([(_ out) (exec input #:in '(5))])
-    (last out)))
+  (last (resume-with-io (exec input) '(5))))
 
 (show-solution part1 part2)

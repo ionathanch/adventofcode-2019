@@ -1,8 +1,8 @@
 #lang racket
 
-(require "../lib.rkt"
-         "IntCode.rkt"
-         racket/vector)
+(require racket/vector
+         "../lib.rkt"
+         "IntCode.rkt")
 
 (define input
   (string->program (car (problem-input 2))))
@@ -14,8 +14,7 @@
     input))
 
 (define (exec-pos0 program)
-  (let-values ([(program _)
-                (exec program)])
+  (let ([program (halt-with-program (exec program))])
     (vector-ref program 0)))
 
 (define part1

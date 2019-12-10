@@ -9,6 +9,7 @@
 
 (provide problem-input
          show-solution
+         uncurry
          sum
          neq?
          nzero?
@@ -19,6 +20,7 @@
          list-ref*
          chunks-of
          transpose
+         zip
          list->queue
          vector-ref*
          vector-set!*)
@@ -36,6 +38,13 @@
 ;; Print part1 and part2 on separate lines.
 (define (show-solution part1 part2)
   (printf "Part 1: ~a\nPart 2: ~a\n" part1 part2))
+
+
+;; Function helpers ;;
+
+;; uncurry : (a1 -> ... -> an -> b) -> ((listof a) -> b)
+(define uncurry
+  (curry apply))
 
 
 ;; Number helpers ;;
@@ -106,6 +115,10 @@
       (let ([pixels (map car layers)]
             [layers (map cdr layers)])
         (cons pixels (transpose layers)))))
+
+;; zip : (a1 -> ... -> an -> b) -> (listof a1) -> ... -> (listof an) -> (listof b)
+(define (zip f . lsts)
+  (map (curry apply f) (transpose lsts)))
 
 ;; list->queue : (listof any) -> (queueof any)
 ;; Creates a queue and adds elements of list in order

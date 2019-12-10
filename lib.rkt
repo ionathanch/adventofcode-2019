@@ -12,6 +12,7 @@
          sum
          neq?
          nzero?
+         negate
          number->digits-reverse
          number->digits
          rac
@@ -49,6 +50,10 @@
 ;; nzero? : number -> boolean
 (define (nzero? n)
   (not (zero? n)))
+
+;; negate : number -> number
+(define (negate n)
+  (- 0 n))
 
 ;; number->digits-reverse : number -> (listof number)
 ;; Return the digits of the given number in reverse order (i.e. RTL)

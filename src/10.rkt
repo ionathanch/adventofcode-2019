@@ -51,18 +51,12 @@
             (list-ref in-views index))))
 
 (define (offset<? xy1 xy2)
-  (let ([x1 (first  xy1)]
-        [y1 (second xy1)]
-        [x2 (first  xy2)]
-        [y2 (second xy2)])
-    (or ; (0, -) < (+, y) < (0, +) < (-, y)
-     (and (zero? x1)  (negative? y1))
-     (and (positive? x1)
-          (or (negative? x2)
-              (and (zero? x2) (positive? y2))))
-     (and (zero? x1)  (negative? x2))
-     (and (nzero? x1) (nzero? x2)
-          (< (atan (/ y1 x1)) (atan (/ y2 x2)))))))
+  (let* ([x1 (first  xy1)] [y1 (second xy1)]
+         [x2 (first  xy2)] [y2 (second xy2)]
+         [θ1 (atan y1 x1)] [θ2 (atan y2 x2)]
+         [θ1 (+ θ1 (if (< θ1 (/ pi -2)) (* 2 pi) 0))]
+         [θ2 (+ θ2 (if (< θ2 (/ pi -2)) (* 2 pi) 0))])
+    (< θ1 θ2)))
 
 (define part2
   (let* ([offsets (map (λ (ast) (zip - ast location)) in-view)]

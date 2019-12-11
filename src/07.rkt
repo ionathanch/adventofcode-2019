@@ -20,17 +20,17 @@
     (apply max (append (map amplify phases)))))
 
 (define (amplify-loop phase)
-  (let* ([amps (map (curry resume-with-input (exec input)) phase)]
+  (let* ([amps (map (∂ resume-with-input (exec input)) phase)]
          [Q (list->queue amps)])
     (let loop ([signal 0])
       (define amp (dequeue! Q))
       (type-case state amp
         [halt (_) signal]
         [in (resume)
-            (define-values (signal st)
+            (define-values (signal* st)
               (resume-with-output (resume signal)))
             (enqueue! Q st)
-            (loop signal)]
+            (loop signal*)]
         [else (error "amplify-loop: Unexpected program state.")]))))
 
 (define part2

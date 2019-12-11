@@ -20,7 +20,7 @@
 (define (offsets x y)
   (let ([is (range (negate x) (- width  x))]
         [js (range (negate y) (- height y))])
-    (filter (uncurry coprime?) (cartesian-product is js))))
+    (filter ($ coprime?) (cartesian-product is js))))
 
 (define (asteroid? x y)
   (define row (list-ref input y))
@@ -36,13 +36,13 @@
         [else (loop (add1 m))]))))
 
 (define (asteroids x y)
-  (filter-map (uncurry (curry asteroid-offset x y)) (offsets x y)))
+  (filter-map ($ (∂ asteroid-offset x y)) (offsets x y)))
 
 (define-values (part1 location in-view)
   (let* ([cols (range width)]
          [rows (range height)]
-         [locations (filter (uncurry asteroid?) (cartesian-product cols rows))]
-         [in-views (map (uncurry asteroids) locations)]
+         [locations (filter ($ asteroid?) (cartesian-product cols rows))]
+         [in-views (map ($ asteroids) locations)]
          [counts (map length in-views)]
          [maximum (apply max counts)]
          [index (index-of counts maximum)])

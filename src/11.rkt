@@ -6,6 +6,13 @@
 (define input
   (string->program (car (problem-input 11))))
 
+;; 0 is a "black" panel and 1 is a "white" panel
+;; but the spaceship is entirely black
+;; so the identifier colour is in "white"
+;; which we show as black blocks against white
+(define panel-hash
+  (make-hash '((0 . #\ ) (1 . #\█))))
+
 ;; The hull as a hash (x . y) -> c
 ;; x increases rightward
 ;; y increases downward
@@ -17,7 +24,7 @@
 (define (make-grid xrange yrange)
   (build-vector
    (add1 yrange)
-   (λ (_) (make-vector (add1 xrange) #\ ))))
+   (λ (_) (make-vector (add1 xrange)))))
 
 ;; Turn CCW if δ = 0, CW if δ = 1
 (define (update-dir dir δ)
@@ -67,16 +74,12 @@
          [ymin (apply min ys)]  [ymax (apply max ys)]
          [xrange (- xmax xmin)] [yrange (- ymax ymin)]
          [grid (make-grid xrange yrange)])
-    (for-each
-     (λ (kv)
-       (let* ([x (- (caar kv) xmin)]
-              [y (- (cdar kv) ymin)]
-              [c (cdr kv)]
-              [row (vector-ref grid y)])
-         (cond [(= c 1) (vector-set! row x #\█)])))
-     (hash->list hull))
-    (for-each
-     (λ (row) (displayln (list->string (vector->list row))))
-     (vector->list grid))))
+    (hash-for-each
+     hull
+     (λ (xy c)
+       (let* ([x (- (car xy) xmin)]
+              [y (- (cdr xy) ymin)])
+         (vector-set! (vector-ref grid y) x c))))
+    (show-msg panel-hash (map vector->list (vector->list grid)))))
 
 (show-solution (part1) (part2))

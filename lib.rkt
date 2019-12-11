@@ -9,6 +9,8 @@
 
 (provide problem-input
          show-solution
+         show-msg
+         ∘ ∂ $
          uncurry
          sum
          neq?
@@ -25,6 +27,17 @@
          vector-ref*
          vector-set!*)
 
+
+;; Function helpers ;;
+(define ∘ compose)
+(define ∂ curry)
+
+;; uncurry : (a1 -> ... -> an -> b) -> ((listof a) -> b)
+(define uncurry
+  (curry apply))
+(define $ uncurry)
+
+
 ;; IO helpers ;;
 
 ;; problem-input : number? -> (listof string?)
@@ -39,12 +52,15 @@
 (define (show-solution part1 part2)
   (printf "Part 1: ~a\nPart 2: ~a\n" part1 part2))
 
-
-;; Function helpers ;;
-
-;; uncurry : (a1 -> ... -> an -> b) -> ((listof a) -> b)
-(define uncurry
-  (curry apply))
+;; show-msg : (hashof (a => char)) -> (listof (listof a)) -> void
+;; Given a grid of values, show the grid line by line,
+;; with values replaced by characters in the given hash.
+(define (show-msg char-hash msg)
+  (for-each
+   displayln
+   (map (∘ list->string
+           (∂ map (∂ hash-ref char-hash)))
+        msg)))
 
 
 ;; Number helpers ;;

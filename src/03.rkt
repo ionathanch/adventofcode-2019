@@ -21,21 +21,38 @@
 ;;   - first-visited? : Whether the first wire has traversed the point;
 ;;   - first-steps : How many steps from the origin the first wire has taken;
 ;;   - second-visited?, second-steps: idem but for the second wire.
-(define pos-x car)
-(define pos-y cdr)
-(define (pos x y)
-  (cons x y))
+(define hashtable (make-hash))
 
 (struct point
   (first-visited?
    first-steps
    second-visited?
-   second-steps))
-
-(define origin (pos 0 0))
+   second-steps)
+  #:transparent)
 (define default-point (point #f 0 #f 0))
 
-;; step-path : boolean -> path -> hashtable -> (pos . number) -> (pos . number)
+(define origin (cons 0 0))
+(define (manhattan xy)
+  (+ (abs (car xy))
+     (abs (cdr xy))))
+
+(define (update! first-wire? x y count)
+  (hash-update!
+   hashtable (cons x y)
+   (λ (pt)
+     (if first-wire?
+         (struct-copy
+          point pt
+          [first-visited? #t]
+          [first-steps count])
+         (struct-copy
+          point pt
+          [second-visited? #t]
+          [second-steps count])))
+   default-point)
+  (add1 count))
+
+;; step-path : boolean -> path -> (pos . number) -> (pos . number)
 ;;   first-wire? : Indicates whether we're stepping for the first or second wire.
 ;;   path : A pair (s: symbol . n: number), where s indicates the direction we step
 ;;     (R, L, U, D for right (+x), left (-x), up (+y), down (-y))
@@ -43,71 +60,54 @@
 ;;   pos-count : A pair (pos . number) that indicates the current location and the steps taken
 ;;   hashtable : A map from pos to point
 ;; Returns the new position after stepping
-(define (step-path first-wire? path ht pos-count)
-  (let* ([position (car pos-count)]
-         [count    (cdr pos-count)]
-         [x (car position)]
-         [y (cdr position)]
-         [update (curry
-                  (λ (dir i count)
-                    (let* ([key (match dir
-                                  ['x (pos i y)]
-                                  ['y (pos x i)])]
-                           [value (hash-ref ht key default-point)]
-                           [new-count (add1 count)]
-                           [new-value
-                            (if first-wire?
-                                (point #t new-count
-                                       (point-second-visited? value)
-                                       (point-second-steps value))
-                                (point (point-first-visited? value)
-                                       (point-first-steps value)
-                                       #t new-count))])
-                      (hash-set! ht key new-value)
-                      new-count)))])
-    (match path
-      [`(R . ,(? number? n))
-       (cons (pos (+ x n) y)
-             (foldl (update 'x) count (range (add1 x) (add1 (+ x n)))))]
-      [`(L . ,(? number? n))
-       (cons (pos (- x n) y)
-             (foldl (update 'x) count (reverse (range (- x n) x))))]
-      [`(U . ,(? number? n))
-       (cons (pos x (+ y n))
-             (foldl (update 'y) count (range (add1 y) (add1 (+ y n)))))]
-      [`(D . ,(? number? n))
-       (cons (pos x (- y n))
-             (foldl (update 'y) count (reverse (range (- y n) y))))])))
+(define (step-path! first-wire? path pos-count)
+  (let* ([x (caar pos-count)]
+         [y (cdar pos-count)]
+         [count (cdr pos-count)]
+         [n (cdr path)])
+    (match (car path)
+      ['R
+       (cons (cons (+ x n) y)
+             (foldl (∂ update! first-wire?) count
+                    (range (add1 x) (add1 (+ x n)))
+                    (make-list n y)))]
+      ['L
+       (cons (cons (- x n) y)
+             (foldl (∂ update! first-wire?) count
+                    (reverse (range (- x n) x))
+                    (make-list n y)))]
+      ['U
+       (cons (cons x (+ y n))
+             (foldl (∂ update! first-wire?) count
+                    (make-list n x)
+                    (range (add1 y) (add1 (+ y n)))))]
+      ['D
+       (cons (cons x (- y n))
+             (foldl (∂ update! first-wire?) count
+                    (make-list n x)
+                    (reverse (range (- y n) y))))])))
 
-(define (step-wire first-wire? wire ht)
-  (foldl (λ (path pos-count) (step-path first-wire? path ht pos-count)) `(,origin . 0) wire))
+(define (step-wire! first-wire? wire)
+  (foldl (∂ step-path! first-wire?) `(,origin . 1) wire))
 
-(define-values (part1 intersect-points)
-  (let* ([hashtable (make-hash)]
-         [_ (step-wire #t wire1 hashtable)]
-         [_ (step-wire #f wire2 hashtable)]
-         [hashlist (hash->list hashtable)]
-         [intersections
-          (filter (λ (kv)
-                    (let ([v (cdr kv)])
-                      (and (point-first-visited? v)
-                           (point-second-visited? v))))
-                  hashlist)]
-         [distances
-          (map (λ (kv)
-                 (let ([k (car kv)])
-                   (+ (abs (pos-x k))
-                      (abs (pos-y k)))))
-               intersections)])
+(define (intersect ht)
+  (filter-map
+   (λ (xypt)
+     (define pt (cdr xypt))
+     (and (point-first-visited? pt)
+          (point-second-visited? pt)
+          (cons (car xypt)
+                (+ (point-first-steps pt)
+                   (point-second-steps pt)))))
+   (hash->list ht)))
+
+(define-values (part1 part2)
+  (let* ([_ (step-wire! #t wire1)]
+         [_ (step-wire! #f wire2)]
+         [intersections (intersect hashtable)]
+         [distances (map (∘ manhattan car) intersections)]
+         [steps (map cdr intersections)])
     (values (apply min distances)
-            (map cdr intersections))))
-
-(define part2
-  (let* ([steps
-          (map (λ (v)
-                 (+ (point-first-steps v)
-                    (point-second-steps v)))
-               intersect-points)])
-    (apply min steps)))
+            (apply min steps))))
 
 (show-solution part1 part2)

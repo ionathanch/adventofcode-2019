@@ -16,6 +16,7 @@
          neq?
          nzero?
          negate
+         pos-or-zero
          number->digits-reverse
          number->digits
          rac
@@ -79,6 +80,10 @@
 ;; negate : number -> number
 (define (negate n)
   (- 0 n))
+
+;; pos-or-zero : number -> number
+(define (pos-or-zero n)
+  (if (negative? n) 0 n))
 
 ;; number->digits-reverse : number -> (listof number)
 ;; Return the digits of the given number in reverse order (i.e. RTL)

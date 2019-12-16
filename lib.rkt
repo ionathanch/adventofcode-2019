@@ -17,7 +17,7 @@
          show-vector-grid
          show-hash-grid
 
-         ∘ ∂ $
+         ∘ ∂ $ %
          uncurry
 
          sum
@@ -27,9 +27,12 @@
          pos-or-zero
          number->digits
          number->digits-reverse
+         digits->number
 
          rac
+         scanl scanr
          list-ref*
+         repeat
          chunks-of
          transpose
          list->queue
@@ -91,9 +94,9 @@
          [vector-grid (make-vector-grid width height default)])
     (hash-for-each
      hash-grid (λ (pos val)
-            (let ([x (- (car pos) min-x)]
-                  [y (- (cdr pos) min-y)])
-              (vector-set! (vector-ref vector-grid y) x val))))
+                 (let ([x (- (car pos) min-x)]
+                       [y (- (cdr pos) min-y)])
+                   (vector-set! (vector-ref vector-grid y) x val))))
     vector-grid))
 
 ;; show-list-grid : (hashof (value => char)) -> list-grid -> void
@@ -138,6 +141,10 @@
 (define (pos-or-zero n)
   (if (negative? n) 0 n))
 
+;; % : number -> number -> number
+(define (% d)
+  (λ (n) (remainder n d)))
+
 ;; number->digits-reverse : number -> (listof number)
 ;; Return the digits of the given number in reverse order (i.e. RTL)
 (define (number->digits-reverse n)
@@ -151,6 +158,13 @@
 (define (number->digits n)
   (reverse (number->digits-reverse n)))
 
+;; digits->number : (listof number) -> number
+;; Return the given digits as a number
+(define (digits->number ns)
+  (let loop ([n 0] [ns ns])
+    (if (empty? ns) n
+        (loop (+ (* n 10) (car ns)) (cdr ns)))))
+
 
 ;; List helpers ;;
 
@@ -159,6 +173,22 @@
 (define (rac lst v)
   (append lst (list v)))
 
+;; scanl : (a -> a -> a) -> (listof a) -> (listof a)
+;; foldl that accumulates partial results in a list
+(define (scanl f init lst)
+  (reverse
+   (foldl (λ (v lst)
+            (cons (f v (first lst)) lst))
+          (list init) lst)))
+
+;; scanr : (a -> a -> a) -> (listof a) -> (listof a)
+;; foldr that accumulates partial results in a list
+(define (scanr f init lst)
+  (reverse
+   (foldr (λ (v lst)
+            (cons (f v (first lst)) lst))
+          (list init) lst)))
+
 ;; list-ref* : (listof any) -> number -> any -> any
 ;; Same as list-ref, except a default value is provided
 ;; if the index is beyond the length of the list.
@@ -166,6 +196,10 @@
   (if (>= pos (length lst))
       failure-result
       (list-ref lst pos)))
+
+;; repeat : number -> (listof any) -> (listof any)
+(define (repeat m lst)
+  (apply append (make-list m lst)))
 
 ;; chunks-of : (listof any) -> nonzero? -> (listof (listof any))
 ;; Partitions a list into lists of the given size in order,
@@ -185,7 +219,9 @@
 ;;        (5 6 7)         =>   (2 6 9)
 ;;        (8 9 10 11 12))      (3 7 10))
 (define (transpose lists)
-  (apply map list lists))
+  (let* ([min-len (apply min (map length lists))]
+         [lists (map (λ (lst) (take lst min-len)) lists)])
+    (apply map list lists)))
 
 ;; list->queue : (listof any) -> (queueof any)
 ;; Creates a queue and adds elements of list in order
@@ -212,6 +248,6 @@
 ;; with all the original elements and the element at the index set
 (define (vector-set!* vec pos v)
   (let ([new-vec (make-vector (max (vector-length vec) (add1 pos)))])
-        (vector-copy! new-vec 0 vec)
-        (vector-set! new-vec pos v)
-        new-vec))
+    (vector-copy! new-vec 0 vec)
+    (vector-set! new-vec pos v)
+    new-vec))

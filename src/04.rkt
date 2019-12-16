@@ -19,12 +19,12 @@
 (define (has-group-of-two? cs)
   (cond [(< (length cs) 2) #f]
         [(= (length cs) 2)
-         (eq? (first cs) (second cs))]
+         (char=? (first cs) (second cs))]
         [else
-         (or (and (eq? (first cs)
-                       (second cs))
-                  (neq? (second cs)
-                        (third cs)))
+         (or (and (char=? (first cs)
+                          (second cs))
+                  (nchar=? (second cs)
+                           (third cs)))
              (has-group-of-two? (dropf cs (λ (c) (eq? c (first cs))))))]))
 
 (define-values (part1 part2)

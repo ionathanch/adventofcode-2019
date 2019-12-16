@@ -21,7 +21,7 @@
          uncurry
 
          sum
-         != neq?
+         != nchar=?
          nzero?
          negate
          pos-or-zero
@@ -122,9 +122,9 @@
 (define (!= n1 n2)
   (not (= n1 n2)))
 
-;; neq : any -> any -> boolean
-(define (neq? v1 v2)
-  (not (eq? v1 v2)))
+;; nchar=? : char -> char -> boolean
+(define (nchar=? c1 c2)
+  (not (char=? c1 c2)))
 
 ;; nzero? : number -> boolean
 (define (nzero? n)

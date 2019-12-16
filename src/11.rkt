@@ -53,7 +53,7 @@
         (let*-values
             ([(clr* st) (resume-with-output (resume clr))]
              [(δ st)    (resume-with-output st)])
-          (cond [(neq? clr clr*)
+          (cond [(!= clr clr*)
                  (hash-set! hull xy clr*)])
           (let* ([dir (update-dir dir δ)]
                  [xy  (update-pos dir xy)])

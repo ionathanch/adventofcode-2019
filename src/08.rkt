@@ -25,7 +25,7 @@
     (* ones twos)))
 
 (define part2
-  (let* ([image (map (∂ findf (∂ neq? #\2)) (transpose layers))])
+  (let* ([image (map (∂ findf (∂ nchar=? #\2)) (transpose layers))])
     (show-list-grid pixel-hash (chunks-of image width))))
 
 (show-solution part1 #f)

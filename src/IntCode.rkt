@@ -3,7 +3,7 @@
 (require racket/vector
          "../lib.rkt")
 
-(define (vector-ref** vec pos)
+(define (vector-ref vec pos)
   (vector-ref* vec pos 0))
 
 ;; string->program : string -> (listof number)
@@ -74,7 +74,7 @@
 ;; If the mode is 2, the value at pointer is an address to be offset by base.
 ;; Note that leading zeroes in the encoded instruction are omitted.
 (define (exec* program #:ptr [pointer 0] #:base [base 0])
-  (define instruction (vector-ref** program pointer))
+  (define instruction (vector-ref program pointer))
   (define opcode (remainder instruction 100))
   (define next-pointer
     (match opcode
@@ -84,9 +84,9 @@
       [99 (+ pointer 1)]))
   (define (get-location index mode)
     (match mode
-      [0 (vector-ref** program (+ pointer index))]
+      [0 (vector-ref program (+ pointer index))]
       [1 (+ pointer index)]
-      [2 (+ (vector-ref** program (+ pointer index)) base)]))
+      [2 (+ (vector-ref program (+ pointer index)) base)]))
   (let* ([mode1 (remainder (quotient instruction 100) 10)]
          [mode2 (remainder (quotient instruction 1000) 10)]
          [mode3 (remainder (quotient instruction 10000) 10)]
@@ -95,9 +95,9 @@
          [l2 (λ () (get-location 2 mode2))]
          [l3 (λ () (get-location 3 mode3))]
          ;; v* : call to read values from program
-         [v1 (λ () (vector-ref** program (l1)))]
-         [v2 (λ () (vector-ref** program (l2)))]
-         [v3 (λ () (vector-ref** program (l3)))])
+         [v1 (λ () (vector-ref program (l1)))]
+         [v2 (λ () (vector-ref program (l2)))]
+         [v3 (λ () (vector-ref program (l3)))])
     (match opcode
       [(or 1 2)
        (let* ([arith (match opcode [1 +] [2 *])]
@@ -107,8 +107,8 @@
       [3
        (let* ([resume
                (λ (input)
-                 (vector-set!* program (l1) input)
-                 (exec* program #:ptr next-pointer #:base base))])
+                 (let ([program (vector-set!* program (l1) input)])
+                   (exec* program #:ptr next-pointer #:base base)))])
          (in resume))]
       [4
        (let* ([output (v1)]

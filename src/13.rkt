@@ -1,6 +1,7 @@
 #lang plai
 
-(require "../lib.rkt"
+(require racket/vector
+         "../lib.rkt"
          "IntCode.rkt")
 
 (define input
@@ -42,7 +43,7 @@
 
 (define (draw-grid)
   (printf "Score: ~a\n" score)
-  (show-msg tile-hash (take (map vector->list (vector->list grid)) 26)))
+  (show-vector-grid tile-hash (vector-take grid 26)))
 
 (define (update-grid! x y t)
   (cond

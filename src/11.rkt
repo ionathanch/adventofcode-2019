@@ -67,19 +67,6 @@
 (define (part2)
   (set! hull (make-hash '(((0 . 0) . 1))))
   (deploy (exec input) 'U '(0 . 0))
-  (let* ([positions (hash-keys hull)]
-         [xs (map car positions)]
-         [ys (map cdr positions)]
-         [xmin (apply min xs)]  [xmax (apply max xs)]
-         [ymin (apply min ys)]  [ymax (apply max ys)]
-         [xrange (- xmax xmin)] [yrange (- ymax ymin)]
-         [grid (make-grid xrange yrange)])
-    (hash-for-each
-     hull
-     (λ (xy c)
-       (let* ([x (- (car xy) xmin)]
-              [y (- (cdr xy) ymin)])
-         (vector-set! (vector-ref grid y) x c))))
-    (show-msg panel-hash (map vector->list (vector->list grid)))))
+  (show-hash-grid panel-hash hull) #f)
 
 (show-solution (part1) (part2))

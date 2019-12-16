@@ -59,9 +59,9 @@
     (< θ1 θ2)))
 
 (define part2
-  (let* ([offsets (map (λ (ast) (zip - ast location)) in-view)]
+  (let* ([offsets (map (λ (ast) (map - ast location)) in-view)]
          [offsets (sort offsets offset<?)]
-         [200th (zip + location (list-ref offsets (sub1 200)))])
+         [200th (map + location (list-ref offsets (sub1 200)))])
     (+ (* (first 200th) 100) (second 200th))))
 
 (show-solution part1 part2)

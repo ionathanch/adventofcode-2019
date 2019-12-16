@@ -9,22 +9,31 @@
 
 (provide problem-input
          show-solution
-         show-msg
+
+         make-vector-grid
+         vectors->lists
+         hash->vector
+         show-list-grid
+         show-vector-grid
+         show-hash-grid
+
          ∘ ∂ $
          uncurry
+
          sum
-         neq?
+         != neq?
          nzero?
          negate
          pos-or-zero
-         number->digits-reverse
          number->digits
+         number->digits-reverse
+
          rac
          list-ref*
          chunks-of
          transpose
-         zip
          list->queue
+
          vector-ref*
          vector-set!*)
 
@@ -53,21 +62,65 @@
 (define (show-solution part1 part2)
   (printf "Part 1: ~a\nPart 2: ~a\n" part1 part2))
 
-;; show-msg : (hashof (a => char)) -> (listof (listof a)) -> void
-;; Given a grid of values, show the grid line by line,
-;; with values replaced by characters in the given hash.
-(define (show-msg char-hash msg)
+
+;; Grid helpers ;;
+;; A grid of values might be stored in three different ways:
+;; - As a hashtable from positions (number . number) to values; or
+;; - As a vector of vectors of values; or
+;; - As a list of lists of values.
+
+;; make-vector-grid : number -> number -> number -> vector-grid
+(define (make-vector-grid width height [default 0])
+  (build-vector height (λ (_) (make-vector width default))))
+
+;; vectors->lists : vector-grid -> list-grid
+(define (vectors->lists vector-grid)
+  (map vector->list (vector->list vector-grid)))
+
+;; hash->vector : hash-grid -> number -> vector-grid
+;; Where the position is not in the hash-grid,
+;; the vector-grid takes on the default value.
+(define (hash->vector hash-grid [default 0])
+  (let* ([keys (hash-keys hash-grid)]
+         [xs (map car keys)]
+         [ys (map cdr keys)]
+         [min-x (apply min xs)]
+         [min-y (apply min ys)]
+         [width  (add1 (- (apply max xs) min-x))]
+         [height (add1 (- (apply max ys) min-y))]
+         [vector-grid (make-vector-grid width height default)])
+    (hash-for-each
+     hash-grid (λ (pos val)
+            (let ([x (- (car pos) min-x)]
+                  [y (- (cdr pos) min-y)])
+              (vector-set! (vector-ref vector-grid y) x val))))
+    vector-grid))
+
+;; show-list-grid : (hashof (value => char)) -> list-grid -> void
+(define (show-list-grid char-hash list-grid)
   (for-each
    displayln
    (map (∘ list->string
            (∂ map (∂ hash-ref char-hash)))
-        msg)))
+        list-grid)))
+
+;; show-vector-grid : (hashof (value => char)) -> vector-grid -> void
+(define (show-vector-grid char-hash vector-grid)
+  (show-list-grid char-hash (vectors->lists vector-grid)))
+
+;; show-hash-grid : (hashof (value => char)) -> hash-grid -> number -> void
+(define (show-hash-grid char-hash hash-grid [default 0])
+  (show-vector-grid char-hash (hash->vector hash-grid default)))
 
 
 ;; Number helpers ;;
 
 ;; sum : (listof number) -> number
 (define (sum ns) (apply + ns))
+
+;; != : number -> number -> boolean
+(define (!= n1 n2)
+  (not (= n1 n2)))
 
 ;; neq : any -> any -> boolean
 (define (neq? v1 v2)
@@ -131,21 +184,14 @@
 ;; e.g. '((1 2 3 4)          '((1 5 8)
 ;;        (5 6 7)         =>   (2 6 9)
 ;;        (8 9 10 11 12))      (3 7 10))
-(define (transpose layers)
-  (if (ormap empty? layers) '()
-      (let ([pixels (map car layers)]
-            [layers (map cdr layers)])
-        (cons pixels (transpose layers)))))
-
-;; zip : (a1 -> ... -> an -> b) -> (listof a1) -> ... -> (listof an) -> (listof b)
-(define (zip f . lsts)
-  (map (curry apply f) (transpose lsts)))
+(define (transpose lists)
+  (apply map list lists))
 
 ;; list->queue : (listof any) -> (queueof any)
 ;; Creates a queue and adds elements of list in order
 (define (list->queue lst)
   (let ([Q (make-queue)])
-    (for-each (curry enqueue! Q) lst)
+    (for-each (∂ enqueue! Q) lst)
     Q))
 
 
@@ -160,14 +206,12 @@
       (vector-ref vec pos)))
 
 ;; vector-set!* : (vectorof any) -> number -> any -> (vectorof any)
-;; Set the value at given index in the vector, then return the vector
+;; Set the value at given index in a new vector, then return that vector
 ;; If the index is beyond the length of the vector,
 ;; a vector that can accomodate that index is returned,
 ;; with all the original elements and the element at the index set
 (define (vector-set!* vec pos v)
-  (if (< pos (vector-length vec))
-      (begin (vector-set! vec pos v) vec)
-      (let ([new-vec (make-vector (add1 pos))])
+  (let ([new-vec (make-vector (max (vector-length vec) (add1 pos)))])
         (vector-copy! new-vec 0 vec)
         (vector-set! new-vec pos v)
-        new-vec)))
+        new-vec))

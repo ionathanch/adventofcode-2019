@@ -38,7 +38,7 @@
 ;; Step moon trajectories once
 (define (step-1D moons vels)
   (let* ([vels (velocities-1D moons vels)]
-         [moons (zip + moons vels)])
+         [moons (map + moons vels)])
     (values moons vels)))
 
 ;; step-n-1D : number -> (listof pos) -> (listof vel) -> (values (listof pos) (listof vel))

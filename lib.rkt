@@ -12,7 +12,7 @@
 
          make-vector-grid
          vectors->lists
-         hash->vector
+         hash->vectors
          show-list-grid
          show-vector-grid
          show-hash-grid
@@ -38,7 +38,9 @@
          list->queue
 
          vector-ref*
-         vector-set!*)
+         vector-set!*
+         hash->vector
+         vector->hash)
 
 
 ;; Function helpers ;;
@@ -60,7 +62,7 @@
          [path     (string-append "../input/" filename ".txt")])
     (read-lines path)))
 
-;; show-solution : any/c -> any/c -> void
+;; show-solution : a -> b -> void
 ;; Print part1 and part2 on separate lines.
 (define (show-solution part1 part2)
   (printf "Part 1: ~a\nPart 2: ~a\n" part1 part2))
@@ -80,10 +82,10 @@
 (define (vectors->lists vector-grid)
   (map vector->list (vector->list vector-grid)))
 
-;; hash->vector : hash-grid -> number -> vector-grid
+;; hash->vectors : hash-grid -> number -> vector-grid
 ;; Where the position is not in the hash-grid,
 ;; the vector-grid takes on the default value.
-(define (hash->vector hash-grid [default 0])
+(define (hash->vectors hash-grid [default 0])
   (let* ([keys (hash-keys hash-grid)]
          [xs (map car keys)]
          [ys (map cdr keys)]
@@ -113,7 +115,7 @@
 
 ;; show-hash-grid : (hashof (value => char)) -> hash-grid -> number -> void
 (define (show-hash-grid char-hash hash-grid [default 0])
-  (show-vector-grid char-hash (hash->vector hash-grid default)))
+  (show-vector-grid char-hash (hash->vectors hash-grid default)))
 
 
 ;; Number helpers ;;
@@ -189,7 +191,7 @@
             (cons (f v (first lst)) lst))
           (list init) lst)))
 
-;; list-ref* : (listof any) -> number -> any -> any
+;; list-ref* : (listof a) -> number -> a -> a
 ;; Same as list-ref, except a default value is provided
 ;; if the index is beyond the length of the list.
 (define (list-ref* lst pos failure-result)
@@ -224,7 +226,7 @@
          [lists (map (λ (lst) (take lst min-len)) lists)])
     (apply map list lists)))
 
-;; list->queue : (listof any) -> (queueof any)
+;; list->queue : (listof a) -> (queueof a)
 ;; Creates a queue and adds elements of list in order
 (define (list->queue lst)
   (let ([Q (make-queue)])
@@ -252,3 +254,15 @@
     (vector-copy! new-vec 0 vec)
     (vector-set! new-vec pos v)
     new-vec))
+
+;; hash->vector : (hashof (number => a)) -> (vectorof a)
+;; Convert an intmap into a mutable vector
+(define (hash->vector hash [default 0])
+  (let ([length (add1 (apply max (hash-keys hash)))])
+    (build-vector length (λ (i) (hash-ref hash i default)))))
+
+;; vector->hash : (vectorof a) -> (hashof (number => a))
+;; Convert a vector into an immutable intmap
+(define (vector->hash vec)
+  (let ([kvs (map cons (range (vector-length vec)) (vector->list vec))])
+    (make-immutable-hash kvs)))

@@ -142,8 +142,8 @@
   (if (negative? n) 0 n))
 
 ;; % : number -> number -> number
-(define (% d)
-  (λ (n) (remainder n d)))
+(define %
+  (∂ (λ (d n) (remainder n d))))
 
 ;; number->digits-reverse : number -> (listof number)
 ;; Return the digits of the given number in reverse order (i.e. RTL)
@@ -199,7 +199,8 @@
 
 ;; repeat : number -> (listof any) -> (listof any)
 (define (repeat m lst)
-  (apply append (make-list m lst)))
+  (if (zero? m) '()
+      (append lst (repeat (sub1 m) lst))))
 
 ;; chunks-of : (listof any) -> nonzero? -> (listof (listof any))
 ;; Partitions a list into lists of the given size in order,

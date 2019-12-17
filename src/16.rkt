@@ -35,7 +35,12 @@
         (loop (fft signal) (add1 count)))))
 
 (define (fft-half ns)
-  (map (∘ (% 10) abs) (reverse (scanr + 0 ns))))
+  (second
+   (foldr (λ (v acc)
+            (match-let ([(list sum lst) acc])
+              (let ([sum (+ v sum)])
+                (list sum (cons (% 10 (abs sum)) lst)))))
+          (list 0 '(0)) ns)))
 
 (define (part2)
   (let* ([offset (digits->number (take input 7))]

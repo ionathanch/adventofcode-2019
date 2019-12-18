@@ -11,6 +11,7 @@
          show-solution
 
          make-vector-grid
+         lists->vectors
          vectors->lists
          hash->vectors
          show-list-grid
@@ -78,6 +79,10 @@
 (define (make-vector-grid width height [default 0])
   (build-vector height (λ (_) (make-vector width default))))
 
+;; lists->vectors : list-grid -> vector-grid
+(define (lists->vectors list-grid)
+  (list->vector (map list->vector list-grid)))
+
 ;; vectors->lists : vector-grid -> list-grid
 (define (vectors->lists vector-grid)
   (map vector->list (vector->list vector-grid)))
@@ -118,6 +123,13 @@
   (show-vector-grid char-hash (hash->vectors hash-grid default)))
 
 
+;; Char helpers ;;
+
+;; nchar=? : char -> char -> boolean
+(define (nchar=? c1 c2)
+  (not (char=? c1 c2)))
+
+
 ;; Number helpers ;;
 
 ;; sum : (listof number) -> number
@@ -126,10 +138,6 @@
 ;; != : number -> number -> boolean
 (define (!= n1 n2)
   (not (= n1 n2)))
-
-;; nchar=? : char -> char -> boolean
-(define (nchar=? c1 c2)
-  (not (char=? c1 c2)))
 
 ;; nzero? : number -> boolean
 (define (nzero? n)

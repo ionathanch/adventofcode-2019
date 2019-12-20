@@ -38,8 +38,8 @@
   (second
    (foldr (λ (v acc)
             (match-let ([(list sum lst) acc])
-              (let ([sum (+ v sum)])
-                (list sum (cons (% 10 (abs sum)) lst)))))
+              (let ([sum (% 10 (+ v sum))])
+                (list sum (cons (abs sum) lst)))))
           (list 0 '(0)) ns)))
 
 (define (part2)

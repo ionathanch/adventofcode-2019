@@ -1,2 +1,4 @@
 **/*.bak
 compiled/
+**/.stack-work/
+**/*.cabal

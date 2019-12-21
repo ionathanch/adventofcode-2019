@@ -3,33 +3,38 @@
 module IntCode
     ( IntCodeState(..)
     , initState
-    , getProgram
     , execUntilHalt
+    , evalWithOutput
+    , getProgramAfterExec
     ) where
 
+import Lib ((%), (//))
 import Data.List (sort)
 import Data.IntMap (IntMap, Key, findWithDefault, insert, fromList, toList)
 import Control.Monad.State (State, get, put, modify, runState)
 
+type Preprogram = [Int]
 type Program = IntMap Int
 type Pointer = Int
 type Base = Int
+type Ins = [Int]
+type Outs = [Int]
 
 data IntCodeState = IntCodeState {
     program :: Program,
     pointer :: Pointer,
     base :: Base,
-    inputs :: [Int]
+    inputs :: Ins
 }
 
-data Result = Output Int | Continue | Halted
-
-(%) = mod
-(//) = div
+data Result = Output Int | Continue | Halt
 
 (!) :: Program -> Key -> Int
 infixl 5 ! -- just below arithmetic
 (!) = flip $ findWithDefault 0
+
+
+{-- STATE HELPERS --}
 
 noop :: State IntCodeState ()
 noop = return ()
@@ -51,6 +56,9 @@ readInput = do
     st <- get
     put st { inputs = tail $ inputs st }
     return . head $ inputs st
+
+
+{-- INTCODE INTERPRETER --}
 
 exec :: State IntCodeState Result
 exec = do
@@ -79,22 +87,35 @@ exec = do
         2 -> updateProgram loc3 (val1 * val2) >> return Continue
         3 -> readInput >>= updateProgram loc1 >> return Continue
         4 -> return $ Output val1
-        5 -> (if (val1 /= 0) then updatePointer val2 else noop)   >> return Continue
-        6 -> (if (val1 == 0) then updatePointer val2 else noop)   >> return Continue
-        7 -> updateProgram loc3 (if (val1 <  val2) then 1 else 0) >> return Continue
-        8 -> updateProgram loc3 (if (val1 == val2) then 1 else 0) >> return Continue
+        5 -> (if val1 /= 0 then updatePointer val2 else noop)   >> return Continue
+        6 -> (if val1 == 0 then updatePointer val2 else noop)   >> return Continue
+        7 -> updateProgram loc3 (if val1 <  val2 then 1 else 0) >> return Continue
+        8 -> updateProgram loc3 (if val1 == val2 then 1 else 0) >> return Continue
         9 -> updateBase val1 >> return Continue
-        99 -> return Halted
+        99 -> return Halt
 
-initState :: [Int] -> IntCodeState
+
+{-- STATE RUNNERS --}
+-- By convention, run* returns (value, state),
+-- exec* returns state, and eval* returns value
+
+initState :: Preprogram -> IntCodeState
 initState list = IntCodeState (fromList $ zip [0..] list) 0 0 []
-
-getProgram :: IntCodeState -> [Int]
-getProgram = map snd . sort . toList . program
 
 execUntilHalt :: IntCodeState -> IntCodeState
 execUntilHalt st =
     let (result, st') = runState exec st
     in case result of
-        Halted -> st'
+        Halt -> st'
         _ -> execUntilHalt st'
+
+evalWithOutput :: IntCodeState -> Outs
+evalWithOutput st =
+    let (result, st') = runState exec st
+    in case result of
+        Halt -> []
+        Output out -> out : evalWithOutput st'
+        Continue -> evalWithOutput st'
+
+getProgramAfterExec :: Preprogram -> Preprogram
+getProgramAfterExec = map snd . sort . toList . program . execUntilHalt . initState

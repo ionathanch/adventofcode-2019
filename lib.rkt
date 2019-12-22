@@ -152,8 +152,7 @@
   (if (negative? n) 0 n))
 
 ;; % : number -> number -> number
-(define %
-  (∂ (λ (d n) (remainder n d))))
+(define % modulo)
 
 ;; number->digits-reverse : number -> (listof number)
 ;; Return the digits of the given number in reverse order (i.e. RTL)

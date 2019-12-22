@@ -1,114 +1,103 @@
 #lang racket
 
 (require match-string
+         math/number-theory
          "../lib.rkt")
 
 (define input
   (problem-input 22))
 
-(define (parse-technique technique)
-  (match technique
-    ["deal into new stack" deal-into-new-stack]
-    [(string-append "cut " s) (∂ cut-N-cards (string->number s))]
-    [(string-append "deal with increment " s) (∂ deal-with-increment-N (string->number s))]))
+;; A shuffle operation (technique) is
+;; an affine transformation on a card's index.
+;; Applying the transformation (m, o) to i yields (m*i + o).
+;; We can compose transformations and only keep track
+;; of the multiple and offset factors (modulo some len).
+;; The identity transformation is I = (1, 0).
 
-(define (deal-into-new-stack cards)
-  (reverse cards))
+(struct affine (multiple offset) #:transparent)
 
-(define (cut-N-cards n cards)
-  (if (negative? n)
-      (cut-N-cards (+ (length cards) n) cards)
-      (append (drop cards n) (take cards n))))
+(define (apply-affine len mo i)
+  (match-let ([(affine m o) mo])
+    (% (+ (* m i) o) len)))
 
-(define (deal-with-increment-N n cards)
-  (let* ([len (length cards)]
-         [vec (make-vector len)])
-    (for ([index (range 0 len)]
-          [card cards])
-      (vector-set! vec (modulo (* index n) len) card))
-    (vector->list vec)))
+(define I (affine 1 0))
 
-(define part1
-  (let loop ([cards (range 0 10007)]
-             [shuffle input])
-    (if (empty? shuffle)
-        (index-of cards 2019)
-        (loop ((parse-technique (first shuffle)) cards) (rest shuffle)))))
+;; Applying the transformation (m, o) n times is the same as
+;; applying the transformation (m^n + o*(m^n - 1)/(m - 1)),
+;; modulo some len.
+(define (affine-expt mo n len)
+  (match-let* ([(affine m o) mo]
+               [m^n (modular-expt m n len)]
+               [o* (% (* o (sub1 m^n) (modular-inverse (sub1 m) len)) len)])
+    (affine m^n o*)))
 
-;; egcd : number -> number -> (list number number number)
-;; Extended Euclidean algorithm for computing GCD
-;; Given integers a and b, return gcd(a, b), x, and y, where
-;; ax + by = gcd(a, b).
-(define (egcd a b)
-  (if (zero? a)
-      (list b 0 1)
-      (match-let ([(list g x y) (egcd (remainder b a) a)])
-        (list g (- y (* x (quotient b a))) x))))
+;; All shuffling transformation techniques are modulo the number of cards.
+;; deal into new stack: reversing the order of the cards,
+;;   corresponding to the transformation i → -1*i + (length - 1)
+;; cut N cards: rotating the cards to the left by n,
+;;   corresponding to the transformation i → i - n
+;; deal with increment N: placing a card every n steps,
+;;   corresponding to the transformation i → n*i
 
-;; mmi : number -> number -> number
-;; Modular multiplicative inverse
-;; Given an integer n and a modulus m, return x such that
-;; nx ≡ 1 (mod m), i.e. nx + my = 1 for some x, y.
-;; We therefore require that n and m are coprime.
-(define (mmi n m)
-  (match-let ([(list g x y) (egcd n m)])
-    x))
+(define (DINS len mo)
+  (match-let ([(affine m o) mo])
+    (affine (% (* m -1) len)
+            (% (- (sub1 len) o) len))))
 
-;; mexp : number -> number -> number
-;; Modular exponentiation
-;; Given a base b, an exponent e, and a modulus m,
-;; compute b^e mod m.
-;; This uses the identity ab mod b = (a mod m)(b mod m) mod m
-(define (mexp b e m)
-  (let loop ([e e] [result 1])
-    (if (= e 0) result
-        (loop (sub1 e) (modulo (* b result) m)))))
+(define (CNC len n mo)
+  (match-let ([(affine m o) mo])
+    (affine m (% (- o n) len))))
 
-;; i -> -i + (len - 1)
+(define (DWIN len n mo)
+  (match-let ([(affine m o) mo])
+    (affine (% (* m n) len)
+            (% (* o n) len))))
+
+;; The corresponding inverse transformations are:
+;;   DINS: -1*i + (length - 1) ← i
+;;   CNC: i + n ← i
+;;   DWIN: n^-1*i ← i
+;; where ·^-1 is the modular multiplicative inverse
+
 (define (inverse-DINS len mo)
-  (match-let ([(list m o) mo])
-    (list (modulo (* m -1) len)
-          (modulo (+ (* o -1) (sub1 len)) len))))
+  (DINS len mo))
 
-;; i -> i + n
 (define (inverse-CNC len n mo)
-  (match-let ([(list m o) mo])
-    (list m (modulo (+ o n) len))))
+  (CNC len (* n -1) mo))
 
-;; i -> i * n^-1
 (define (inverse-DWIN len n mo)
-  (match-let ([(list m o) mo]
-              [ninv (mmi n len)])
-    (list (modulo (* ninv m) len)
-          (modulo (* ninv o) len))))
+  (DWIN len (modular-inverse n len) mo))
 
-(define (inverse-parse len technique mo)
-  (match technique
+;; Shuffling combines all transformations in order.
+;; Inverse shuffling combines all inverse transformations in reverse order.
+;; We begin with the identity transformation, I = (1, 0).
+
+(define (parse len T mo)
+  (match T
+    ["deal into new stack" (DINS len mo)]
+    [(string-append "cut " s) (CNC len (string->number s) mo)]
+    [(string-append "deal with increment " s) (DWIN len (string->number s) mo)]))
+
+(define (inverse-parse len T mo)
+  (match T
     ["deal into new stack" (inverse-DINS len mo)]
     [(string-append "cut " s) (inverse-CNC len (string->number s) mo)]
     [(string-append "deal with increment " s) (inverse-DWIN len (string->number s) mo)]))
 
-;; This gives m = 90109821400559, o = 119199174489885 for len = 119315717514047
+(define (shuffle len)
+  (foldl (∂ parse len) I input))
+
 (define (inverse-shuffle len)
-  (foldr (∂ inverse-parse len) '(1 0) input))
+  (foldr (∂ inverse-parse len) I input))
 
-;; mexp was taking too long, so I asked WolframAlpha for mn:
-;; 90109821400559^101741582076661 % 119315717514047 = 20096240743059
-(define (inverse-shuffle-N-times len n)
-  (match-let* ([(list m o) (inverse-shuffle len)]
-               [mn 20096240743059 #;(mexp m n len)]
-               [on (modulo (* o (sub1 mn) (mmi (sub1 m) len)) len)])
-    (list mn on)))
-
-;; Given a modulus len, a multiple-offset pair mo, and a number i,
-;; compute (m*i + o) % len
-(define (apply-mo len mo i)
-  (match-let ([(list m o) mo])
-    (modulo (+ (* m i) o) len)))
+(define part1
+  (let ([len 10007])
+    (apply-affine len (shuffle len) 2019)))
 
 (define part2
   (let* ([len 119315717514047]
-         [mo (inverse-shuffle-N-times len 101741582076661)])
-    (apply-mo len mo 2020)))
+         [mo (inverse-shuffle len)]
+         [mo^n (affine-expt mo 101741582076661 len)])
+    (apply-affine len mo^n 2020)))
 
 (show-solution part1 part2)

@@ -54,39 +54,61 @@
   (match-let ([(list g x y) (egcd n m)])
     x))
 
-;; The following functions are inverse to those from part 1
-;; with respect to the card indices.
-;; That is, if some shuffling technique s takes a card at index i
-;; and moves it to index s(i) = j, then s^-1(j) = i.
-;; Therefore, if after applying a series of shuffling techniques,
-;; we want to know what card is at position p,
-;; we apply the inverse functions in reverse order to find its original index.
+;; mexp : number -> number -> number
+;; Modular exponentiation
+;; Given a base b, an exponent e, and a modulus m,
+;; compute b^e mod m.
+;; This uses the identity ab mod b = (a mod m)(b mod m) mod m
+(define (mexp b e m)
+  (let loop ([e e] [result 1])
+    (if (= e 0) result
+        (loop (sub1 e) (modulo (* b result) m)))))
 
-(define (inverse-DINS len i)
-  (sub1 (- len i)))
+;; i -> -i + (len - 1)
+(define (inverse-DINS len mo)
+  (match-let ([(list m o) mo])
+    (list (modulo (* m -1) len)
+          (modulo (+ (* o -1) (sub1 len)) len))))
 
-(define (inverse-CNC len n i)
-  (if (positive? n)
-      (modulo (+ n i) len)
-      (modulo (+ n i len) len)))
+;; i -> i + n
+(define (inverse-CNC len n mo)
+  (match-let ([(list m o) mo])
+    (list m (modulo (+ o n) len))))
 
-(define (inverse-DWIN len n i)
-  (modulo (* (mmi n len) i) len))
+;; i -> i * n^-1
+(define (inverse-DWIN len n mo)
+  (match-let ([(list m o) mo]
+              [ninv (mmi n len)])
+    (list (modulo (* ninv m) len)
+          (modulo (* ninv o) len))))
 
-(define (inverse-parse len technique)
+(define (inverse-parse len technique mo)
   (match technique
-    ["deal into new stack" (∂ inverse-DINS len)]
-    [(string-append "cut " s) (∂ inverse-CNC len (string->number s))]
-    [(string-append "deal with increment " s) (∂ inverse-DWIN len (string->number s))]))
+    ["deal into new stack" (inverse-DINS len mo)]
+    [(string-append "cut " s) (inverse-CNC len (string->number s) mo)]
+    [(string-append "deal with increment " s) (inverse-DWIN len (string->number s) mo)]))
 
+;; This gives m = 90109821400559, o = 119199174489885 for len = 119315717514047
 (define (inverse-shuffle len)
-  (apply compose (map (∂ inverse-parse len) input)))
+  (foldr (∂ inverse-parse len) '(1 0) input))
 
-(define (part2)
-  (let loop ([count 101741582076661]
-             [index 2020])
-    (if (zero? count)
-        index
-        (loop (sub1 count) ((inverse-shuffle 119315717514047) index)))))
+;; mexp was taking too long, so I asked WolframAlpha for mn:
+;; 90109821400559^101741582076661 % 119315717514047 = 20096240743059
+(define (inverse-shuffle-N-times len n)
+  (match-let* ([(list m o) (inverse-shuffle len)]
+               [mn 20096240743059 #;(mexp m n len)]
+               [on (modulo (* o (sub1 mn) (mmi (sub1 m) len)) len)])
+    (list mn on)))
 
-(show-solution part1 #f)
+;; Given a modulus len, a multiple-offset pair mo, and a number i,
+;; compute (m*i + o) % len
+(define (apply-mo len mo i)
+  (match-let ([(list m o) mo])
+    (modulo (+ (* m i) o) len)))
+
+(define part2
+  (let* ([len 119315717514047]
+         [mo (inverse-shuffle-N-times len 101741582076661)])
+    (apply-mo len mo 2020)))
+
+(show-solution part1 part2)

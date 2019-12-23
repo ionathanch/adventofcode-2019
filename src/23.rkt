@@ -14,35 +14,6 @@
 (define packets
   (build-vector 50 (λ (_) (make-queue))))
 
-(define part1
-  (let/cc k
-    (let loop ()
-      (for ([i (range 0 50)])
-        (let ([st (vector-ref network i)]
-              [input (vector-ref packets i)])
-          (type-case state st
-            [in (resume)
-                (if (queue-empty? input)
-                    (vector-set! network i (resume -1))
-                    (let* ([x (dequeue! input)]
-                           [y (dequeue! input)]
-                           [st (resume-with-input (resume x) y)])
-                      (vector-set! network i st)))]
-            [out (j resume)
-                 (let*-values ([(x st) (resume-with-output (resume))]
-                               [(y st) (resume-with-output st)])
-                   (when (= j 255) (k y))
-                   (enqueue! (vector-ref packets j) x)
-                   (enqueue! (vector-ref packets j) y)
-                   (vector-set! network i st))]
-            [halt (_) (error "Unexpected program state.")])))
-      (loop))))
-
-(set! network
-      (build-vector 50 (λ (n) (resume-with-input (exec input) n))))
-
-(collect-garbage 'major)
-
 (define (waiting? st)
   (type-case state st
     [in (_) #t]
@@ -71,6 +42,8 @@
                                  [(y st) (resume-with-output st)])
                      (if (= j 255)
                          (begin
+                           (when (= NATy -1)
+                             (printf "Part 1: ~a\n" y))
                            (set! NATx x)
                            (set! NATy y))
                          (begin
@@ -88,4 +61,4 @@
             (enqueue! addr0 NATy)))
         (loop)))))
 
-(show-solution part1 part2)
+(printf "Part 2: ~a\n" part2)

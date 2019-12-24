@@ -38,7 +38,10 @@
          transpose
          list->queue
 
+         vector-first
+         vector-last
          vector-ref*
+         vector-grid-ref*
          vector-set!*
          hash->vector
          vector->hash)
@@ -243,6 +246,14 @@
 
 ;; Vector helpers ;;
 
+;; vector-first : (vectorof any) -> any
+(define (vector-first vec)
+  (vector-ref vec 0))
+
+;; vector-last : (vectorof any) -> any
+(define (vector-last vec)
+  (vector-ref vec (sub1 (vector-length vec))))
+
 ;; vector-ref* : (vectorof any) -> number -> any -> any
 ;; Same as list-ref, except a default value is provided
 ;; if the index is beyond the length of the list.
@@ -251,9 +262,24 @@
       failure-result
       (vector-ref vec pos)))
 
+;; vector-grid-ref* : (vectorof (vectorof any)) -> (list number number) -> any -> any
+;; Given coordinates (x, y), in the yth vector, find the xth element.
+;; If either x or y are beyond the indices of the vectors,
+;; return the default value provided.
+(define (vector-grid-ref* grid coord failure-result)
+  (match-let ([(list x y) coord]
+              [y-len (vector-length grid)])
+    (if (or (< y 0) (>= y y-len))
+        failure-result
+        (let* ([row (vector-ref grid y)]
+               [x-len (vector-length row)])
+          (if (or (< x 0) (>= x x-len))
+              failure-result
+              (vector-ref row x))))))
+
 ;; vector-set!* : (vectorof any) -> number -> any -> (vectorof any)
 ;; Set the value at given index in a new vector, then return that vector
-;; If the index is beyond the length of the vector,
+;; If the index is beyond the indices of the vector,
 ;; a vector that can accomodate that index is returned,
 ;; with all the original elements and the element at the index set
 (define (vector-set!* vec pos v)

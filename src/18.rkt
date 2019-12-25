@@ -3,10 +3,11 @@
 (require racket/set
          data/heap
          graph
+         (only-in 2htdp/batch-io read-lines)
          (except-in "../lib.rkt" transpose))
 
 (define input
-  (problem-input 18))
+  (read-lines "../input/18.txt"))
 
 (define list-grid
   (map string->list input))
@@ -20,11 +21,21 @@
 (define height
   (length list-grid))
 
-;; start : (coord . char)
-;; coord = (list number number)
-(define start
-  (cons #\@ (list (round (/ width 2))
-                            (round (/ height 2)))))
+(define (show-grid)
+  (for-each displayln
+            (map (λ (s)
+                   (string-replace (string-replace s "#" "█") "." " "))
+                 input)))
+
+;; keys : (setof char)
+(define keys
+  (list->set
+   (cons #\@
+         (map integer->char
+              (range (char->integer #\a)
+                     (add1 (char->integer #\z)))))))
+
+;; coord : (list number number)
 
 ;; get-char : coord -> char
 (define (get-char coord)
@@ -78,6 +89,17 @@
                    hash)))
            hash coords)))
 
+;; start : (char . coord)
+;; Char-coord pair of #\@, for convenience
+(define start
+  (cons #\@ (hash-ref keys-hash #\@)))
+
+;; visited : (setof char)
+;; Assume that we already have any key that does not
+;; show up in the hash, as well as the starting point #\@
+(define visited
+  (set-add (set-subtract keys (list->set (hash-keys keys-hash))) #\@))
+
 ;; inter-keys-hash : (hashof (char => char))
 ;; A hashmap from keys to the keys that must be collected
 ;; when taking the shortest path from #\@ to that key
@@ -130,6 +152,25 @@
          (not (set-member? visited key))
          (andmap (∂ set-member? visited) (hash-ref doors-hash key)))))
 
+;; We do a breadth-first search over an implicit graph.
+;; The nodes of this graph are visit states, which consist of
+;; the current key we are at, as well as the keys we have visited.
+;; This is why state=? only compares key and visited when removing
+;; states from the heap.
+;; States are ordered by the total number of steps taken,
+;; which is also saved in the state struct.
+;; This is why state<? only orders by steps.
+;; Starting from the state with the fewest steps taken so far,
+;; we visit all of its neighbours, which are the visitable keys
+;; with the accumulated visited keys at that point.
+;; The visitable keys are given by the conditions above in visitable?
+;; For each neighbouring state, if the steps taken to get there
+;; is smaller than the same existing state already in the heap,
+;; we "update" the state by removing the old state from the heap
+;; and adding the same state with the new number of steps into the heap.
+;; Using a hashmap from states to steps allows us to find the old steps
+;; if it exists (since data/heap doesn't have a find operation).
+
 (struct state (key visited steps) #:transparent)
 
 (define (state=? st1 st2)
@@ -139,13 +180,13 @@
 (define (state<? st1 st2)
   (< (state-steps st1) (state-steps st2)))
 
-(define part1
+(define (search key-count)
   (let ([heap (make-heap state<?)]
         [memo (make-hash)])
-    (heap-add! heap (state #\@ (set #\@) 0))
+    (heap-add! heap (state #\@ visited 0))
     (match-let loop ([(state key visited steps) (heap-min heap)])
       (heap-remove-min! heap)
-      (if (= (set-count visited) (hash-count keys-hash))
+      (if (= (set-count visited) key-count)
           steps
           (let* ([visitable (filter (∂ visitable? visited) (get-neighbors key-graph key))])
             (for ([nkey visitable])
@@ -159,4 +200,7 @@
                   (heap-add! heap st))))
             (loop (heap-min heap)))))))
 
-#;(for-each displayln (map (λ (s) (string-replace (string-replace s "#" "█") "." " ")) input))
+(define part1
+    (search (set-count keys)))
+
+(printf "Part 1: ~a\n" part1)

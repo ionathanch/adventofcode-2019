@@ -32,17 +32,11 @@
   (if (empty? inputs) st
       (type-case state st
         [in (resume)
-            (resume-with-inputs (resume (first inputs)) (rest inputs))]
-        [else (error "Unexpected program state.")])))
-
-(define (resume-with-inputs* st inputs)
-  (if (empty? inputs) st
-      (type-case state st
-        [in (resume)
             (if (empty? inputs) st
-                (resume-with-inputs* (resume (first inputs)) (rest inputs)))]
+                (resume-with-inputs (resume (first inputs)) (rest inputs)))]
         [out (value resume)
-             (resume-with-inputs* (resume) inputs)]
+             #;(display (integer->char value))
+             (resume-with-inputs (resume) inputs)]
         [halt (_) (error "Unexpected program state.")])))
 
 (define (play st)
@@ -66,76 +60,57 @@
                   (loop st output)])]
       [halt (_) (display (ascii->string (reverse output)))])))
 
+(define drop-mouse    (drop* '(mouse)))
+(define drop-pointer  (drop* '(pointer)))
+(define drop-monolith (drop* '(monolith)))
+(define drop-ration   (drop* '(food ration)))
+(define drop-slsb     (drop* '(space law space brochure)))
+(define drop-sand     (drop* '(sand)))
+(define drop-asterisk (drop* '(asterisk)))
+(define drop-mutex    (drop* '(mutex)))
+(define take-mouse    (take* '(mouse)))
+(define take-pointer  (take* '(pointer)))
+(define take-monolith (take* '(monolith)))
+(define take-ration   (take* '(food ration)))
+(define take-slsb     (take* '(space law space brochure)))
+(define take-sand     (take* '(sand)))
+(define take-asterisk (take* '(asterisk)))
+(define take-mutex    (take* '(mutex)))
+
+;; Some other locations we don't need to explore:
+;; - quarters: east of storage
+;; - holodeck: east of hallway
+;; - gift wrapping: east of kitchen
+;; - passage: south of gift wrapping
+;; Some items we should not take:
+;; - lava: in sick bay
+;; - electromagnet: in gift wrapping
+;; - escape pod: in holodeck
+;; - photons: in engineering
 (define (goto-checkpoint)
   (let ([commands
          (append
-          north
-          (take* '(mouse))
-          north
-          (take* '(pointer))
-          south
-          south
-          west
-          (take* '(monolith))
-          north
-          west
-          (take* '(food ration))
-          south
-          (take* '(space law space brochure))
-          north
-          east
-          south
-          south
-          (take* '(sand))
-          south
-          west
-          (take* '(asterisk))
-          south
-          (take* '(mutex))
-          north
-          east
-          north
-          north
-          east
-          south
-          south
-          west
-          south
+          north ;; hallway
+          take-mouse
+          north ;; kitchen
+          take-pointer
+          south south west ;; hallway, hull, stable
+          take-monolith
+          north west ;; sick bay, observatory
+          take-ration
+          south ;; hot chocolate fountain
+          take-slsb
+          north east south south ;; observatory, sick bay, stable, navigation
+          take-sand
+          south west ;; corridor, maintenance
+          take-asterisk
+          south ;; storage
+          take-mutex
+          ;; maintenance, corridor, navigation, stable, hull,
+          ;; arcade, laboratory, engineering, checkpoint
+          north east north north east south south west south
           inv)])
-    (resume-with-inputs* (exec input) commands)))
-
-(define-values (drop-mouse
-                drop-pointer
-                drop-monolith
-                drop-ration
-                drop-slsb
-                drop-sand
-                drop-asterisk
-                drop-mutex
-                take-mouse
-                take-pointer
-                take-monolith
-                take-ration
-                take-slsb
-                take-sand
-                take-asterisk
-                take-mutex)
-  (values (drop* '(mouse))
-          (drop* '(pointer))
-          (drop* '(monolith))
-          (drop* '(food ration))
-          (drop* '(space law space brochure))
-          (drop* '(sand))
-          (drop* '(asterisk))
-          (drop* '(mutex))
-          (take* '(mouse))
-          (take* '(pointer))
-          (take* '(monolith))
-          (take* '(food ration))
-          (take* '(space law space brochure))
-          (take* '(sand))
-          (take* '(asterisk))
-          (take* '(mutex))))
+    (resume-with-inputs (exec input) commands)))
 
 (define drop-all
   (append drop-mouse
@@ -164,7 +139,7 @@
     (let/cc k
       (for ([combo item-combinations])
         (let* ([commands (append drop-all combo east)]
-               [st* (resume-with-inputs* st commands)])
+               [st* (resume-with-inputs st commands)])
           (let loop ([st st*]
                      [output '()])
             (type-case state st

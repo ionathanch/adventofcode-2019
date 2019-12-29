@@ -9,7 +9,7 @@
   (string->program (car (problem-input 23))))
 
 (define network
-  (build-vector 50 (λ (n) (resume-with-input (exec input) n))))
+  (build-vector 50 (λ (n) (resume-with-input (resume-with-input (exec input) n) -1))))
 
 (define packets
   (build-vector 50 (λ (_) (make-queue))))
@@ -32,7 +32,7 @@
             (type-case state st
               [in (resume)
                   (if (queue-empty? input)
-                      (vector-set! network i (resume -1))
+                      (void)
                       (let* ([x (dequeue! input)]
                              [y (dequeue! input)]
                              [st (resume-with-input (resume x) y)])
